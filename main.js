@@ -1,15 +1,16 @@
-import Map from 'https://cdn.jsdelivr.net/npm/ol@10.8.0/Map.js';
-import View from 'https://cdn.jsdelivr.net/npm/ol@10.8.0/View.js';
-import TileLayer from 'https://cdn.jsdelivr.net/npm/ol@10.8.0/layer/Tile.js';
-import VectorLayer from 'https://cdn.jsdelivr.net/npm/ol@10.8.0/layer/Vector.js';
-import VectorSource from 'https://cdn.jsdelivr.net/npm/ol@10.8.0/source/Vector.js';
-import OSM from 'https://cdn.jsdelivr.net/npm/ol@10.8.0/source/OSM.js';
-import GeoJSON from 'https://cdn.jsdelivr.net/npm/ol@10.8.0/format/GeoJSON.js';
-import Style from 'https://cdn.jsdelivr.net/npm/ol@10.8.0/style/Style.js';
-import Fill from 'https://cdn.jsdelivr.net/npm/ol@10.8.0/style/Fill.js';
-import Stroke from 'https://cdn.jsdelivr.net/npm/ol@10.8.0/style/Stroke.js';
+// import Map from 'https://cdn.jsdelivr.net/npm/ol@10.8.0/Map.js';
+// import View from 'https://cdn.jsdelivr.net/npm/ol@10.8.0/View.js';
+// import TileLayer from 'https://cdn.jsdelivr.net/npm/ol@10.8.0/layer/Tile.js';
+// import VectorLayer from 'https://cdn.jsdelivr.net/npm/ol@10.8.0/layer/Vector.js';
+// import VectorSource from 'https://cdn.jsdelivr.net/npm/ol@10.8.0/source/Vector.js';
+// import OSM from 'https://cdn.jsdelivr.net/npm/ol@10.8.0/source/OSM.js';
+// import GeoJSON from 'https://cdn.jsdelivr.net/npm/ol@10.8.0/format/GeoJSON.js';
+// import Style from 'https://cdn.jsdelivr.net/npm/ol@10.8.0/style/Style.js';
+// import Fill from 'https://cdn.jsdelivr.net/npm/ol@10.8.0/style/Fill.js';
+// import Stroke from 'https://cdn.jsdelivr.net/npm/ol@10.8.0/style/Stroke.js';
 // Massachusetts center coordinates (longitude, latitude)
-const massCenter = [139.77, 35.68];
+// const massCenter = [139.77, 35.68];
+const massCenter = [-11000000, 5000000];
 
 // WKT rectangle
 const wkt = 'POLYGON((139.75 36.0, 140.5 36.0, 140.5 35.5, 139.75 35.5, 139.75 36.0))';
@@ -21,7 +22,7 @@ const feature = format.readFeature(wkt, {
 
 const vectorSource = new ol.source.Vector({
     // features: [feature]
-    url: './data/us_districts.geojson',
+    url: './data/USCourtDistrict1.geojson',
     format: new ol.format.GeoJSON(),
 });
 
