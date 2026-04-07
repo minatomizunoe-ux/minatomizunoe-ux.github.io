@@ -81,13 +81,27 @@
             top: 10px;
             right: 10px;
             z-index: 1000;
-            background: rgba(255, 255, 255, 0.418);
+            background: rgba(255, 255, 255, 0.75);
             padding: 10px;
             border: 2px solid #e3f9ff;
             border-radius: 5px;
             max-width: 360px;
             font: 14px/1.4 sans-serif;
             white-space: pre-wrap;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        #aboutPanel {
+            position: absolute;
+            left: 10px;
+            bottom: 10px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.85);
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            max-width: 300px;
+            font-size: 13px;
+            line-height: 1.4;
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
     </style>
@@ -116,6 +130,153 @@
             <option value="A9_25">Chapter 9 total, 2025</option>
             <option value="A12_25">Chapter 12 total, 2025</option>
             <option value="A15_25">Chapter 15 total, 2025</option>
+
+            <option value="BALL24">Business all chapters total, 2024</option>
+            <option value="BALL25">Business all chapters total, 2025</option>
+            <option value="B7_24">Business Chapter 7, 2024</option>
+            <option value="B7_25">Business Chapter 7, 2025</option>
+            <option value="B11_24">Business Chapter 11, 2024</option>
+            <option value="B11_25">Business Chapter 11, 2025</option>
+            <option value="B13_24">Business Chapter 13, 2024</option>
+            <option value="B13_25">Business Chapter 13, 2025</option>
+            <option value="BOTH24">Business other chapters total, 2024</option>
+            <option value="BOTH25">Business other chapters total, 2025</option>
+
+            <option value="NALL24">Nonbusiness all chapters total, 2024</option>
+            <option value="NALL25">Nonbusiness all chapters total, 2025</option>
+            <option value="N7_24">Nonbusiness Chapter 7, 2024</option>
+            <option value="N7_25">Nonbusiness Chapter 7, 2025</option>
+            <option value="N11_24">Nonbusiness Chapter 11, 2024</option>
+            <option value="N11_25">Nonbusiness Chapter 11, 2025</option>
+            <option value="N13_24">Nonbusiness Chapter 13, 2024</option>
+            <option value="N13_25">Nonbusiness Chapter 13, 2025</option>
+            <option value="NOTH24">Nonbusiness other chapters total, 2024</option>
+            <option value="NOTH25">Nonbusiness other chapters total, 2025</option>
+
+            <option value="A7SH24">Chapter 7 share of ALL_24</option>
+            <option value="A7SH25">Chapter 7 share of ALL_25</option>
+            <option value="A11SH24">Chapter 11 share of ALL_24</option>
+            <option value="A11SH25">Chapter 11 share of ALL_25</option>
+            <option value="A13SH24">Chapter 13 share of ALL_24</option>
+            <option value="A13SH25">Chapter 13 share of ALL_25</option>
+            <option value="AOTH24S">Other chapters share of ALL_24</option>
+            <option value="AOTH25S">Other chapters share of ALL_25</option>
+            <option value="A9SH24">Chapter 9 share of ALL_24</option>
+            <option value="A9SH25">Chapter 9 share of ALL_25</option>
+            <option value="A12SH24">Chapter 12 share of ALL_24</option>
+            <option value="A12SH25">Chapter 12 share of ALL_25</option>
+            <option value="A15SH24">Chapter 15 share of ALL_24</option>
+            <option value="A15SH25">Chapter 15 share of ALL_25</option>
+            <option value="B7SH24">Business Chapter 7 share of BALL24</option>
+            <option value="B7SH25">Business Chapter 7 share of BALL25</option>
+            <option value="B11SH24">Business Chapter 11 share of BALL24</option>
+            <option value="B11SH25">Business Chapter 11 share of BALL25</option>
+            <option value="B13SH24">Business Chapter 13 share of BALL24</option>
+            <option value="B13SH25">Business Chapter 13 share of BALL25</option>
+            <option value="BOTH24S">Business other chapters share of BALL24</option>
+            <option value="BOTH25S">Business other chapters share of BALL25</option>
+            <option value="N7SH24">Nonbusiness Chapter 7 share of NALL24</option>
+            <option value="N7SH25">Nonbusiness Chapter 7 share of NALL25</option>
+            <option value="N11SH24">Nonbusiness Chapter 11 share of NALL24</option>
+            <option value="N11SH25">Nonbusiness Chapter 11 share of NALL25</option>
+            <option value="N13SH24">Nonbusiness Chapter 13 share of NALL24</option>
+            <option value="N13SH25">Nonbusiness Chapter 13 share of NALL25</option>
+            <option value="NOTH24S">Nonbusiness other chapters share of NALL24</option>
+            <option value="NOTH25S">Nonbusiness other chapters share of NALL25</option>
+
+            <option value="ALLPC24">All chapters per 100 population, 2024</option>
+            <option value="ALLPC25">All chapters per 100 population, 2025</option>
+            <option value="A7PC24">Chapter 7 per 100 population, 2024</option>
+            <option value="A7PC25">Chapter 7 per 100 population, 2025</option>
+            <option value="A11PC24">Chapter 11 per 100 population, 2024</option>
+            <option value="A11PC25">Chapter 11 per 100 population, 2025</option>
+            <option value="A13PC24">Chapter 13 per 100 population, 2024</option>
+            <option value="A13PC25">Chapter 13 per 100 population, 2025</option>
+            <option value="AOTHPC24">Other chapters per 100 population, 2024</option>
+            <option value="AOTHPC25">Other chapters per 100 population, 2025</option>
+            <option value="A9PC24">Chapter 9 per 100 population, 2024</option>
+            <option value="A9PC25">Chapter 9 per 100 population, 2025</option>
+            <option value="A12PC24">Chapter 12 per 100 population, 2024</option>
+            <option value="A12PC25">Chapter 12 per 100 population, 2025</option>
+            <option value="A15PC24">Chapter 15 per 100 population, 2024</option>
+            <option value="A15PC25">Chapter 15 per 100 population, 2025</option>
+            <option value="BALLPC24">Business all chapters per 100 population, 2024</option>
+            <option value="BALLPC25">Business all chapters per 100 population, 2025</option>
+            <option value="B7PC24">Business Chapter 7 per 100 population, 2024</option>
+            <option value="B7PC25">Business Chapter 7 per 100 population, 2025</option>
+            <option value="B11PC24">Business Chapter 11 per 100 population, 2024</option>
+            <option value="B11PC25">Business Chapter 11 per 100 population, 2025</option>
+            <option value="B13PC24">Business Chapter 13 per 100 population, 2024</option>
+            <option value="B13PC25">Business Chapter 13 per 100 population, 2025</option>
+            <option value="BOTHPC24">Business other chapters per 100 population, 2024</option>
+            <option value="BOTHPC25">Business other chapters per 100 population, 2025</option>
+            <option value="NALLPC24">Nonbusiness all chapters per 100 population, 2024</option>
+            <option value="NALLPC25">Nonbusiness all chapters per 100 population, 2025</option>
+            <option value="N7PC24">Nonbusiness Chapter 7 per 100 population, 2024</option>
+            <option value="N7PC25">Nonbusiness Chapter 7 per 100 population, 2025</option>
+            <option value="N11PC24">Nonbusiness Chapter 11 per 100 population, 2024</option>
+            <option value="N11PC25">Nonbusiness Chapter 11 per 100 population, 2025</option>
+            <option value="N13PC24">Nonbusiness Chapter 13 per 100 population, 2024</option>
+            <option value="N13PC25">Nonbusiness Chapter 13 per 100 population, 2025</option>
+            <option value="NOTHPC24">Nonbusiness other chapters per 100 population, 2024</option>
+            <option value="NOTHPC25">Nonbusiness other chapters per 100 population, 2025</option>
+
+            <option value="ALLACHG">Absolute change in all chapters total</option>
+            <option value="A7ACHG">Absolute change in Chapter 7</option>
+            <option value="A11ACHG">Absolute change in Chapter 11</option>
+            <option value="A13ACHG">Absolute change in Chapter 13</option>
+            <option value="AOTHCHG">Absolute change in other chapters total</option>
+            <option value="A9ACHG">Absolute change in Chapter 9</option>
+            <option value="A12ACHG">Absolute change in Chapter 12</option>
+            <option value="A15ACHG">Absolute change in Chapter 15</option>
+            <option value="BALLCHG">Absolute change in business all chapters total</option>
+            <option value="B7ACHG">Absolute change in business Chapter 7</option>
+            <option value="B11ACHG">Absolute change in business Chapter 11</option>
+            <option value="B13ACHG">Absolute change in business Chapter 13</option>
+            <option value="BOTHCHG">Absolute change in business other chapters total</option>
+            <option value="NALLCHG">Absolute change in nonbusiness all chapters total</option>
+            <option value="N7ACHG">Absolute change in nonbusiness Chapter 7</option>
+            <option value="N11ACHG">Absolute change in nonbusiness Chapter 11</option>
+            <option value="N13ACHG">Absolute change in nonbusiness Chapter 13</option>
+            <option value="NOTHCHG">Absolute change in nonbusiness other chapters total</option>
+
+            <option value="ALLPCHG">Percent change in all chapters total</option>
+            <option value="A7PCHG">Percent change in Chapter 7</option>
+            <option value="A11PCHG">Percent change in Chapter 11</option>
+            <option value="A13PCHG">Percent change in Chapter 13</option>
+            <option value="AOTHPCHG">Percent change in other chapters total</option>
+            <option value="A9PCHG">Percent change in Chapter 9</option>
+            <option value="A12PCHG">Percent change in Chapter 12</option>
+            <option value="A15PCHG">Percent change in Chapter 15</option>
+            <option value="BALLPCHG">Percent change in business all chapters total</option>
+            <option value="B7PCHG">Percent change in business Chapter 7</option>
+            <option value="B11PCHG">Percent change in business Chapter 11</option>
+            <option value="B13PCHG">Percent change in business Chapter 13</option>
+            <option value="BOTHPCHG">Percent change in business other chapters total</option>
+            <option value="NALLPCHG">Percent change in nonbusiness all chapters total</option>
+            <option value="N7PCHG">Percent change in nonbusiness Chapter 7</option>
+            <option value="N11PCHG">Percent change in nonbusiness Chapter 11</option>
+            <option value="N13PCHG">Percent change in nonbusiness Chapter 13</option>
+            <option value="NOTHPCHG">Percent change in nonbusiness other chapters total</option>
+
+            <option value="ALLCCHG">Change in all chapters per 100 population</option>
+            <option value="A7CCHG">Change in Chapter 7 per 100 population</option>
+            <option value="A11CCHG">Change in Chapter 11 per 100 population</option>
+            <option value="A13CCHG">Change in Chapter 13 per 100 population</option>
+            <option value="AOTHCCHG">Change in other chapters per 100 population</option>
+            <option value="A9CCHG">Change in Chapter 9 per 100 population</option>
+            <option value="A12CCHG">Change in Chapter 12 per 100 population</option>
+            <option value="A15CCHG">Change in Chapter 15 per 100 population</option>
+            <option value="BALLCCHG">Change in business all chapters per 100 population</option>
+            <option value="B7CCHG">Change in business Chapter 7 per 100 population</option>
+            <option value="B11CCHG">Change in business Chapter 11 per 100 population</option>
+            <option value="B13CCHG">Change in business Chapter 13 per 100 population</option>
+            <option value="BOTHCCHG">Change in business other chapters per 100 population</option>
+            <option value="NALLCCHG">Change in nonbusiness all chapters per 100 population</option>
+            <option value="N7CCHG">Change in nonbusiness Chapter 7 per 100 population</option>
+            <option value="N11CCHG">Change in nonbusiness Chapter 11 per 100 population</option>
+            <option value="N13CCHG">Change in nonbusiness Chapter 13 per 100 population</option>
+            <option value="NOTHCCHG">Change in nonbusiness other chapters per 100 population</option>
         </select>
         </div>
         <div>
@@ -132,6 +293,22 @@
 
     <div id="legend"></div>
     <div id="info">Click a feature to Get Info</div>
+
+    <div id="aboutPanel">
+        <strong>About this map</strong><br><br>
+        <strong>Data:</strong><br>
+        U.S. bankruptcy indicators by court district, including chapter totals, business and nonbusiness counts, shares, per-capita values, and change measures.<br><br>
+
+        <strong>DataSource:</strong><br>
+        U.S. bankruptcy, court district, and population: <br>US Supreme Court
+        <br>https://www.uscourts.gov/data-news/reports/statistical-reports/bankruptcy-filings-statistics<br>
+
+        <strong>Platform:</strong><br>
+        This map is built with OpenLayers and hosted as a lightweight static website.<br><br>
+
+        <strong>Design note:</strong><br>
+        The site is intentionally simple so it can remain portable, fast to load, and workable on a limited free hosting setup.
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/ol@v10.8.0/dist/ol.js"></script>
     <script type="module" src="main.js"></script>
