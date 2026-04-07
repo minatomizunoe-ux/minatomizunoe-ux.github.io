@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>USA Map</title>
+    <title>USA Court District Map</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.8.0/ol.css">
     <style>
         html, body {
@@ -14,6 +14,54 @@
         #map {
             width: 100%;
             height: 100vh;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 50px;
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        #legend {
+            position: absolute;
+            right: 10px;
+            bottom: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.894);
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            min-width: 180px;
+            font-size: 13px;
+            line-height: 1.4;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .legend-row {
+            display: flex;
+            align-items: center;
+            margin: 4px 0;
+            gap: 8px;
+        }
+
+        .legend-swatch {
+            width: 22px;
+            height: 14px;
+            border: 2px solid #000;
+            box-sizing: border-box;
+            flex: 0 0 auto;
+        }
+        label {
+            display: inline-block;
+            margin-right: 6px;
+        }
+
+        select {
+            margin-bottom: 6px;
         }
         .title {
             position: absolute;
@@ -40,12 +88,49 @@
             max-width: 360px;
             font: 14px/1.4 sans-serif;
             white-space: pre-wrap;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
     </style>
 </head>
 <body>
-    <div class="title">USA</div>
+    <div class="title">USA Bankruptcy in Court District</div>
     <div id="map"></div>
+    <div id="controls">
+        <div>
+        <label for="fieldSelect">Field:</label>
+        <select id="fieldSelect">
+            <option value="ALL_24" selected>All chapters total, 2024</option>
+            <option value="A7_24">Chapter 7 total, 2024</option>
+            <option value="A11_24">Chapter 11 total, 2024</option>
+            <option value="A13_24">Chapter 13 total, 2024</option>
+            <option value="AOTH24">Other chapters total, 2024</option>
+            <option value="A9_24">Chapter 9 total, 2024</option>
+            <option value="A12_24">Chapter 12 total, 2024</option>
+            <option value="A15_24">Chapter 15 total, 2024</option>
+
+            <option value="ALL_25">All chapters total, 2025</option>
+            <option value="A7_25">Chapter 7 total, 2025</option>
+            <option value="A11_25">Chapter 11 total, 2025</option>
+            <option value="A13_25">Chapter 13 total, 2025</option>
+            <option value="AOTH25">Other chapters total, 2025</option>
+            <option value="A9_25">Chapter 9 total, 2025</option>
+            <option value="A12_25">Chapter 12 total, 2025</option>
+            <option value="A15_25">Chapter 15 total, 2025</option>
+        </select>
+        </div>
+        <div>
+        <label for="classCount">Classes:</label>
+        <select id="classCount">
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5" selected>5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+        </select>
+        </div>
+    </div>
+
+    <div id="legend"></div>
     <div id="info">Click a feature</div>
 
     <script src="https://cdn.jsdelivr.net/npm/ol@v10.8.0/dist/ol.js"></script>
