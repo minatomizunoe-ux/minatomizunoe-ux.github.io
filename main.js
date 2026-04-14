@@ -16,16 +16,50 @@ const baseColors5 = [
   '#2171b5',
   '#08306b'
 ];
+
+// set hover show info
+let hoveredFeature = null;
+let hoverEnabled = true;
+const hoverLabel = document.getElementById('hoverLabel');
+
+// for about
+const aboutPanel = document.getElementById('aboutPanel');
+const aboutHeader = document.getElementById('aboutHeader');
+const aboutToggle = document.getElementById('aboutToggle');
+
+// add listeners
+document.getElementById('fieldSelect').addEventListener('change', applyClassification);
+document.getElementById('classCount').addEventListener('change', applyClassification);
+//  add listener for new palette selector
+document.getElementById('paletteSelect').addEventListener('change', applyClassification);
+
 // expands any class count 3–7 from a light→dark ramp
-function getColorRamp(n) {
-  const ramps = {
-    3: ['#3Bcfd4', '#fc9305', '#f20094'],
-    4: ['#3Bcfd4', '#9cc047', '#fc9305', '#f20094'],
-    5: ['#3Bcfd4', '#6cc881', '#fc9305', '#f85f4d', '#f20094'],
-    6: ['#3Bcfd4', '#58cc9a', '#b9b737', '#fc9305', '#f85f4d', '#f20094'],
-    7: ['#3Bcfd4', '#4fcdae', '#84c95f', '#fc9305', '#fa7a2a', '#f44767', '#f20094']
+function getColorRamp(n, paletteName = 'turquoisePink') {
+  const palettes  ={ 
+    turquoisePink: {
+      3: ['#3Bcfd4', '#fc9305', '#f20094'],
+      4: ['#3Bcfd4', '#9cc047', '#fc9305', '#f20094'],
+      5: ['#3Bcfd4', '#6cc881', '#fc9305', '#f85f4d', '#f20094'],
+      6: ['#3Bcfd4', '#58cc9a', '#b9b737', '#fc9305', '#f85f4d', '#f20094'],
+      7: ['#3Bcfd4', '#4fcdae', '#84c95f', '#fc9305', '#fa7a2a', '#f44767', '#f20094']
+    },
+    greenYellowRed: {
+      3: ['#2A8D08', '#F2E713', '#F91E07'],
+      4: ['#2A8D08', '#97bf10', '#F2E713', '#F91E07'],
+      5: ['#2A8D08', '#6ea60c', '#F2E713', '#f59b0e', '#F91E07'],
+      6: ['#2A8D08', '#54990a', '#b8ce11', '#F2E713', '#f59b0e', '#F91E07'],
+      7: ['#2A8D08', '#438f09', '#7fb20d', '#F2E713', '#f7bc11', '#f47a0c', '#F91E07']
+    },
+    purpleRoseOrange: {
+      3: ['#832388', '#E3436B', '#F17C2E'],
+      4: ['#832388', '#b4337a', '#E3436B', '#F17C2E'],
+      5: ['#832388', '#a62d80', '#E3436B', '#ea614d', '#F17C2E'],
+      6: ['#832388', '#962a83', '#c53a76', '#E3436B', '#ea614d', '#F17C2E'],
+      7: ['#832388', '#912985', '#af317d', '#E3436B', '#e8535c', '#ed6847', '#F17C2E']
+    }
   };
-  return ramps[n] || baseColors5;
+  const selectedPalette = palettes[paletteName] || palettes.turquoisePink;
+  return selectedPalette[n] || selectedPalette[5];
 }
 
 function getNameOfData(n){
@@ -341,9 +375,11 @@ function applyClassification() {
   const classCount = Number(document.getElementById('classCount').value);
 
   const values = getNumericValues(fieldName);
-//   const breaks = buildBreaks(values, classCount); // equal-interval
+  // const breaks = buildBreaks(values, classCount); // equal-interval
   const breaks = buildQuantileBreaks(values, classCount);
-  const colors = getColorRamp(classCount);
+  // const colors = getColorRamp(classCount);
+  const paletteName = document.getElementById('paletteSelect').value;
+  const colors = getColorRamp(classCount, paletteName);
 
   const styleCache = new Map();
 
@@ -371,8 +407,148 @@ function applyClassification() {
   updateLegend(fieldName, breaks, colors);
 }
 
-document.getElementById('fieldSelect').addEventListener('change', applyClassification);
-document.getElementById('classCount').addEventListener('change', applyClassification);
+
+
+// add function toggle about panel
+function toggleAboutPanel() {
+  const collapsed = aboutPanel.classList.toggle('collapsed');
+  aboutToggle.textContent = collapsed ? '+' : '−';
+}
+
+//  show hover label
+function getHoverLabelHtml(feature) {
+  const fieldName = document.getElementById('fieldSelect').value;
+
+  const districtName =
+    feature.get('Initial') || 'District';
+
+  const displayFieldName = getNameOfData(fieldName);
+  const value = feature.get(fieldName);
+
+  return `
+    <div class="hover-title">${districtName}</div>
+    <div class="hover-value">${displayFieldName}: ${value ?? 'N/A'}</div>
+  `;
+}
+
+// highlight stroke
+function getHoverStyle(feature) {
+  const color = getFeatureColor(feature);
+  // const baseColor = getCurrentFeatureColor(feature);
+  const baseFill = getCurrentFeatureFill(feature);
+
+  return new ol.style.Style({
+    stroke: new ol.style.Stroke({
+      color: color,
+      width: 4,
+    }),
+    fill: new ol.style.Fill({
+      // color: hexToRgba(color, alpha),
+      color: baseFill,
+    }),
+  });
+}
+
+// get color of feature
+function getFeatureColor(feature) {
+  const style = getCurrentFeatureStyle(feature);
+  if (!style) return '#333';
+
+  const stroke = style.getStroke();
+  if (!stroke) return '#333';
+
+  return stroke.getColor() || '#333';
+}
+
+function getCurrentFeatureFill(feature) {
+  const style = getCurrentFeatureStyle(feature);
+  if (!style) return 'rgba(255,255,255,0.25)';
+
+  const fill = style.getFill();
+  if (!fill) return 'rgba(255,255,255,0.25)';
+
+  return fill.getColor() || 'rgba(255,255,255,0.25)';
+}
+
+function getCurrentFeatureStyle(feature) {
+  const styleFunction = vectorLayer.getStyleFunction();
+  if (!styleFunction) return null;
+
+  const resolution = map.getView().getResolution();
+  const styleResult = styleFunction(feature, resolution);
+
+  if (Array.isArray(styleResult)) {
+    return styleResult[0] || null;
+  }
+
+  return styleResult || null;
+}
+
+// add trigger / function / listener
+document.getElementById('hoverToggle').addEventListener('click', function () {
+  hoverEnabled = !hoverEnabled;
+  this.textContent = `Hover labels: ${hoverEnabled ? 'On' : 'Off'}`;
+
+  if (!hoverEnabled) {
+    if (hoveredFeature) {
+      hoveredFeature.setStyle(undefined);
+      hoveredFeature = null;
+    }
+    hoverLabel.style.display = 'none';
+  }
+});
+
+// add toggle function
+aboutToggle.addEventListener('click', function (evt) {
+  evt.stopPropagation();
+  toggleAboutPanel();
+});
+
+aboutHeader.addEventListener('click', toggleAboutPanel);
+
+// hover and show
+map.on('pointermove', function (evt) {
+  if (!hoverEnabled || evt.dragging) return;
+
+  const feature = map.forEachFeatureAtPixel(evt.pixel, function (feature) {
+    return feature;
+  });
+
+  // mouse is no longer over a feature
+  if (!feature) {
+    if (hoveredFeature) {
+      hoveredFeature.setStyle(undefined);
+      hoveredFeature = null;
+    }
+
+    hoverLabel.style.display = 'none';
+    return;
+  }
+
+  // const currentColor = getFeatureColor(feature);
+
+  // restore previous hovered feature if moved to another one
+  if (hoveredFeature && hoveredFeature !== feature) {
+    hoveredFeature.setStyle(undefined);
+  }
+
+  // set new hovered feature
+  if (hoveredFeature !== feature) {
+    hoveredFeature = feature;
+    hoveredFeature.setStyle(getHoverStyle(feature));
+  }
+
+  // update floating label
+  hoverLabel.innerHTML = getHoverLabelHtml(feature);
+  
+  hoverLabel.style.display = 'block';
+  hoverLabel.style.left = `${evt.pixel[0] + 15}px`;
+  hoverLabel.style.top = `${evt.pixel[1] + 15}px`;
+
+  const color = getFeatureColor(feature);
+  hoverLabel.querySelector('.hover-title').style.color = color;
+  hoverLabel.style.borderColor = color;
+});
 
 
 
