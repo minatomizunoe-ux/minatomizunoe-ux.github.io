@@ -17,15 +17,40 @@
         }
         #controls {
             position: absolute;
-            top: 10px;
-            left: 50px;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
             z-index: 1000;
-            background: white;
+            background: rgba(255, 255, 255, 0.829);
             padding: 10px;
             border: 1px solid #ccc;
             border-radius: 6px;
             font-size: 14px;
             line-height: 1.4;
+
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px 14px;
+            max-width: 50%;
+            
+        }
+        #controls .control-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        #controls label {
+            margin-right: 0;
+            min-width: auto;
+        }
+
+        #controls select,
+        #controls button {
+            margin-bottom: 0;
         }
         #legend {
             position: absolute;
@@ -166,7 +191,7 @@
     <div id="map"></div>
     <div id="hoverLabel" class="hover-label" style="display:none;"></div>
     <div id="controls">
-        <div>
+        <!-- <div>
             <label for="fieldSelect">Field:</label>
             <select id="fieldSelect">
                 <option value="ALL_24" selected>All chapters total, 2024</option>
@@ -334,8 +359,54 @@
                 <option value="N13CCHG">Change in nonbusiness Chapter 13 per 100 population</option>
                 <option value="NOTHCCHG">Change in nonbusiness other chapters per 100 population</option>
             </select>
+        </div> -->
+        <div class="control-group">
+            <label for="yearSelect">Year:</label>
+            <select id="yearSelect"></select>
         </div>
-        <div>
+        <div class="control-group">
+            <label for="monthSelect">Month:</label>
+            <select id="monthSelect"></select>
+        </div>
+        <div class="control-group">
+            <label for="debtorTypeSelect">Debtor type:</label>
+            <select id="debtorTypeSelect">
+                <option value="all" selected>All</option>
+                <option value="business">Business</option>
+                <option value="nonbusiness">Nonbusiness</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label for="chapterSelect">Chapter:</label>
+            <select id="chapterSelect">
+                <option value="all" selected>All chapters</option>
+                <option value="7">Chapter 7</option>
+                <option value="9">Chapter 9</option>
+                <option value="11">Chapter 11</option>
+                <option value="12">Chapter 12</option>
+                <option value="13">Chapter 13</option>
+                <option value="15">Chapter 15</option>
+                <option value="OTH">Other chapters</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label for="metricSelect">Metric:</label>
+            <select id="metricSelect">
+                <option value="cases" selected>Total amount</option>
+                <option value="per100pop">Per 100 population</option>
+                <option value="per100hh">Per 100 households</option>
+                <option value="per100labor">Per 100 labor force</option>
+                <option value="per100unemp">Per 100 unemployed</option>
+                <option value="per100pop16">Per 100 population age 16+</option>
+                <option value="perIncomeBillion">Cases per $1B aggregate household income</option>
+                <option value="share">Share of all filings</option>
+                <option value="momAbs">Month-to-month change</option>
+                <option value="momPct">Month-to-month % change</option>
+                <option value="yoyAbs">Year-over-year change</option>
+                <option value="yoyPct">Year-over-year % change</option>
+            </select>
+        </div>
+        <div class="control-group">
             <label for="classCount">Classes:</label>
             <select id="classCount">
                 <option value="3">3</option>
@@ -345,13 +416,20 @@
                 <option value="7">7</option>
             </select>
         </div>
-        <div>
+        <div class="control-group">
             <label for="paletteSelect">Color Setting:</label>
             <select id="paletteSelect">
                 <option value="turquoisePink" selected>Turquoise → Orange → Pink</option>
                 <option value="greenYellowRed">Green → Yellow → Red</option>
                 <option value="purpleRoseOrange">Purple → Rose → Orange</option>
             </select>
+            <!-- <button id="hoverToggle">Hover labels: On</button> -->
+        </div>
+            <div class="control-group">
+            <button id="playToggle">Play</button>
+        </div>
+
+        <div class="control-group">
             <button id="hoverToggle">Hover labels: On</button>
         </div>
     </div>

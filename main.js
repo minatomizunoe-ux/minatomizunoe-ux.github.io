@@ -2,6 +2,15 @@
 const massCenter = [139.77, 35.68];
 // const massCenter = [-11000000, 5000000];
 
+const CSV_URL = './data/output.csv';
+const GEOJSON_URL = './data/US_Court_pop_4326.geojson'
+
+let csvRows = [];
+let monthlyLookup = {};
+let featureAliasMap = new ol.Map();
+
+let yearMonthKeys = [];
+
 // // WKT rectangle
 // const wkt = 'POLYGON((139.75 36.0, 140.5 36.0, 140.5 35.5, 139.75 35.5, 139.75 36.0))';
 // const format = new ol.format.WKT();
@@ -28,10 +37,379 @@ const aboutHeader = document.getElementById('aboutHeader');
 const aboutToggle = document.getElementById('aboutToggle');
 
 // add listeners
-document.getElementById('fieldSelect').addEventListener('change', applyClassification);
+// document.getElementById('fieldSelect').addEventListener('change', applyClassification);
 document.getElementById('classCount').addEventListener('change', applyClassification);
 //  add listener for new palette selector
 document.getElementById('paletteSelect').addEventListener('change', applyClassification);
+
+document.getElementById('yearSelect').addEventListener('change', function () {
+  rebuildMonthSelect();
+  applyClassification();
+});
+
+document.getElementById('monthSelect').addEventListener('change', applyClassification);
+document.getElementById('debtorTypeSelect').addEventListener('change', applyClassification);
+document.getElementById('chapterSelect').addEventListener('change', applyClassification);
+document.getElementById('metricSelect').addEventListener('change', applyClassification);
+
+// csv parser
+function splitCsvLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (ch === ',' && !inQuotes) {
+      result.push(current);
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+
+  result.push(current);
+  return result;
+}
+
+function parseCsv(text) {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+
+  const headers = splitCsvLine(lines[0]);
+
+  const rows = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const values = splitCsvLine(lines[i]);
+    const row = {};
+
+    for (let j = 0; j < headers.length; j++) {
+      row[headers[j]] = values[j] || '';
+    }
+
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+
+// connect geojson
+function normalizeText(v) {
+  return String(v || '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, ' ')
+    .replace(/\./g, '')
+    .trim();
+}
+
+function buildFeatureAliasMap() {
+  featureAliasMap = new ol.Map();
+
+  vectorSource.getFeatures().forEach(feature => {
+    const aliases = new Set();
+
+    const initial = feature.get('Initial');
+    const name = feature.get('NAME');
+
+    if (initial) aliases.add(normalizeText(initial));
+    if (name) aliases.add(normalizeText(name));
+
+    aliases.forEach(a => {
+      featureAliasMap.set(a, feature);
+    });
+  });
+}
+
+function getFeatureFromDistrictValue(districtValue) {
+  return featureAliasMap.get(normalizeText(districtValue)) || null;
+}
+
+// add a monthly lookup builder
+function makeYearMonth(row) {
+  const y = String(row.year).trim();
+  const m = String(row.month).trim().padStart(2, '0');
+  return `${y}-${m}`;
+}
+
+function buildMonthlyLookup(rows) {
+  monthlyLookup = {};
+  yearMonthKeys = [];
+
+  const ymSeen = {};
+
+  rows.forEach(row => {
+    const feature = getFeatureFromDistrictValue(row.district);
+    if (!feature) return;
+
+    const initial = feature.get('Initial');
+    const ym = makeYearMonth(row);
+
+    if (!monthlyLookup[initial]) monthlyLookup[initial] = {};
+    if (!monthlyLookup[initial][ym]) monthlyLookup[initial][ym] = [];
+
+    monthlyLookup[initial][ym].push(row);
+
+    if (!ymSeen[ym]) {
+      ymSeen[ym] = true;
+      yearMonthKeys.push(ym);
+    }
+  });
+  yearMonthKeys.sort();
+}
+
+// populate year and month selectors
+function populateYearMonthControls() {
+  const years = [];
+  const seenYears = {};
+
+  yearMonthKeys.forEach(ym => {
+    const y = ym.split('-')[0];
+    if (!seenYears[y]) {
+      seenYears[y] = true;
+      years.push(y);
+    }
+  });
+
+  const yearSelect = document.getElementById('yearSelect');
+  yearSelect.innerHTML = '';
+
+  years.forEach(y => {
+    const opt = document.createElement('option');
+    opt.value = y;
+    opt.textContent = y;
+    yearSelect.appendChild(opt);
+  });
+
+  if (years.length) {
+    yearSelect.value = years[years.length - 1];
+  }
+
+  rebuildMonthSelect();
+}
+
+function rebuildMonthSelect() {
+  const yearSelect = document.getElementById('yearSelect');
+  const monthSelect = document.getElementById('monthSelect');
+
+  const selectedYear = yearSelect.value;
+  monthSelect.innerHTML = '';
+
+  yearMonthKeys.forEach(ym => {
+    const parts = ym.split('-');
+    const y = parts[0];
+    const m = parts[1];
+
+    if (y === selectedYear) {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = m;
+      monthSelect.appendChild(opt);
+    }
+  });
+}
+
+// csv loader
+async function loadMonthlyCsv() {
+  const text = await fetch(CSV_URL).then(r => r.text());
+  csvRows = parseCsv(text);
+  buildMonthlyLookup(csvRows);
+
+  console.log('CSV rows loaded:', csvRows.length);
+  console.log('Random CSV rows:', csvRows[Math.floor(Math.random() * csvRows.length)])
+  console.log('Monthly lookup sample:', monthlyLookup);
+  // test connection
+  testMonthlyConnection();
+  populateYearMonthControls();
+}
+
+// add record summarizer
+function normalizeDebtorType(v) {
+  const s = String(v || '').toLowerCase().replace(/[\s_-]+/g, '');
+  if (s.includes('non')) return 'nonbusiness';
+  if (s.includes('business')) return 'business';
+  return 'unknown';
+}
+
+function normalizeChapter(v) {
+  const s = String(v || '').toLowerCase().trim();
+
+  if (s === '7' || s.includes('chapter 7')) return '7';
+  if (s === '9' || s.includes('chapter 9')) return '9';
+  if (s === '11' || s.includes('chapter 11')) return '11';
+  if (s === '12' || s.includes('chapter 12')) return '12';
+  if (s === '13' || s.includes('chapter 13')) return '13';
+  if (s === '15' || s.includes('chapter 15')) return '15';
+
+  return 'OTH';
+}
+
+function getCasesFromRows(rows, debtorType, chapter) {
+  if (!rows || !rows.length) return 0;
+
+  let total = 0;
+
+  rows.forEach(row => {
+    const rowType = normalizeDebtorType(row.debtor_type);
+    const rowChapter = normalizeChapter(row.chapter);
+    const cases = Number(row.cases) || 0;
+
+    const typeMatch = debtorType === 'all' || rowType === debtorType;
+    const chapterMatch = chapter === 'all' || rowChapter === chapter;
+
+    if (typeMatch && chapterMatch) {
+      total += cases;
+    }
+  });
+
+  return total;
+}
+
+// //  add current selection to features
+// function updateSelectedCasesToFeatures() {
+//   const year = document.getElementById('yearSelect').value;
+//   const month = document.getElementById('monthSelect').value;
+//   const debtorType = document.getElementById('debtorTypeSelect').value;
+//   const chapter = document.getElementById('chapterSelect').value;
+
+//   const ym = year + '-' + month;
+
+//   vectorSource.getFeatures().forEach(feature => {
+//     const initial = feature.get('Initial');
+//     const rows = monthlyLookup[initial] ? monthlyLookup[initial][ym] : null;
+//     const value = getCasesFromRows(rows, debtorType, chapter);
+//     feature.set('__displayValue', value);
+//   });
+// }
+function updateSelectedValueToFeatures() {
+  vectorSource.getFeatures().forEach(feature => {
+    const value = getMetricValue(feature);
+    feature.set('__displayValue', value);
+  });
+}
+
+// get from past month
+function getPreviousMonth(year, month) {
+  let y = Number(year);
+  let m = Number(month);
+
+  m = m - 1;
+  if (m < 1) {
+    m = 12;
+    y = y - 1;
+  }
+
+  return {
+    year: String(y),
+    month: String(m).padStart(2, '0')
+  };
+}
+function getPreviousYearSameMonth(year, month) {
+  return {
+    year: String(Number(year) - 1),
+    month: String(month).padStart(2, '0')
+  };
+}
+function getMetricValue(feature) {
+  const year = document.getElementById('yearSelect').value;
+  const month = document.getElementById('monthSelect').value;
+  const debtorType = document.getElementById('debtorTypeSelect').value;
+  const chapter = document.getElementById('chapterSelect').value;
+  const metric = document.getElementById('metricSelect').value;
+
+  const initial = feature.get('Initial');
+  const ym = year + '-' + month;
+
+  const currentRows = monthlyLookup[initial] ? monthlyLookup[initial][ym] : null;
+  const currentCases = getCasesFromRows(currentRows, debtorType, chapter);
+
+  const population = Number(feature.get('Population')) || null;
+  const households = Number(feature.get('1101C11E_s')) || null;
+  const laborForce = Number(feature.get('LaborForce')) || null;
+  const unemployed = Number(feature.get('Unemployed')) || null;
+  const pop16over = Number(feature.get('2301C11E_s')) || null;
+  const aggIncome = Number(feature.get('B19025_1E_')) || null;
+
+  if (metric === 'cases') {
+    return currentCases;
+  }
+
+  if (metric === 'per100pop') {
+    if (!population || population === 0) return null;
+    return currentCases / population * 100;
+  }
+
+  if (metric === 'per100hh') {
+    if (!households || households === 0) return null;
+    return currentCases / households * 100;
+  }
+
+  if (metric === 'per100labor') {
+    if (!laborForce || laborForce === 0) return null;
+    return currentCases / laborForce * 100;
+  }
+
+  if (metric === 'per100unemp') {
+    if (!unemployed || unemployed === 0) return null;
+    return currentCases / unemployed * 100;
+  }
+
+  if (metric === 'per100pop16') {
+    if (!pop16over || pop16over === 0) return null;
+    return currentCases / pop16over * 100;
+  }
+
+  if (metric === 'perIncomeBillion') {
+    if (!aggIncome || aggIncome === 0) return null;
+    return currentCases / aggIncome * 1000000000;
+  }
+
+  if (metric === 'share') {
+    const totalAllCases = getCasesFromRows(currentRows, 'all', 'all');
+    if (!totalAllCases || totalAllCases === 0) return null;
+    return currentCases / totalAllCases;
+  }
+
+  const prevMonthObj = getPreviousMonth(year, month);
+  const prevYm = prevMonthObj.year + '-' + prevMonthObj.month;
+  const prevRows = monthlyLookup[initial] ? monthlyLookup[initial][prevYm] : null;
+  const prevCases = getCasesFromRows(prevRows, debtorType, chapter);
+
+  if (metric === 'momAbs') {
+    return currentCases - prevCases;
+  }
+
+  if (metric === 'momPct') {
+    if (!prevCases || prevCases === 0) return null;
+    return (currentCases - prevCases) / prevCases * 100;
+  }
+
+  const prevYearObj = getPreviousYearSameMonth(year, month);
+  const prevYearYm = prevYearObj.year + '-' + prevYearObj.month;
+  const prevYearRows = monthlyLookup[initial] ? monthlyLookup[initial][prevYearYm] : null;
+  const prevYearCases = getCasesFromRows(prevYearRows, debtorType, chapter);
+
+  if (metric === 'yoyAbs') {
+    return currentCases - prevYearCases;
+  }
+
+  if (metric === 'yoyPct') {
+    if (!prevYearCases || prevYearCases === 0) return null;
+    return (currentCases - prevYearCases) / prevYearCases * 100;
+  }
+
+  return currentCases;
+}
 
 // expands any class count 3–7 from a light→dark ramp
 function getColorRamp(n, paletteName = 'turquoisePink') {
@@ -233,7 +611,8 @@ function getNameOfData(n){
 
 const vectorSource = new ol.source.Vector({
     // features: [feature]
-    url: './data/USCourtDistrict1.geojson',
+    // url: './data/USCourtDistrict1.geojson',
+    url: GEOJSON_URL,
     format: new ol.format.GeoJSON(),
 });
 
@@ -267,15 +646,33 @@ const map = new ol.Map({
 });
 
 // asynchronized
-vectorSource.once('change', function () {
+// connect after geojson loads
+vectorSource.once('change', async function () {
   if (vectorSource.getState() === 'ready') {
     map.getView().fit(vectorSource.getExtent(), {
       padding: [20, 20, 20, 20],
       maxZoom: 8,
     });
+
+    buildFeatureAliasMap();
+    await loadMonthlyCsv();
+
     applyClassification();
   }
 });
+
+// this is for test monthly connection
+function testMonthlyConnection() {
+  const feature = vectorSource.getFeatures()[0];
+  if (!feature) {
+    console.log('No features loaded');
+    return;
+  }
+
+  const initial = feature.get('Initial');
+  console.log('Testing feature Initial:', initial);
+  console.log('Monthly rows for this feature:', monthlyLookup[initial]);
+}
 
 function getNumericValues(fieldName) {
   return vectorSource.getFeatures()
@@ -344,9 +741,10 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-function updateLegend(fieldName, breaks, colors) {
+function updateLegend(title, breaks, colors) {
   const legend = document.getElementById('legend');
-  legend.innerHTML = `<strong>${getNameOfData(fieldName)}</strong><br>`;
+  // legend.innerHTML = `<strong>${getNameOfData(fieldName)}</strong><br>`;
+  legend.innerHTML = `<strong>${title}</strong><br>`;
 
   for (let i = 0; i < colors.length; i++) {
     const low = breaks[i];
@@ -370,21 +768,78 @@ function updateLegend(fieldName, breaks, colors) {
   }
 }
 
-function applyClassification() {
-  const fieldName = document.getElementById('fieldSelect').value;
-  const classCount = Number(document.getElementById('classCount').value);
+// get Debtor type
+function getDebtorTypeLabel(v) {
+  const labels = {
+    all: 'all debtors',
+    business: 'business filings',
+    nonbusiness: 'nonbusiness filings'
+  };
+  return labels[v] || v;
+}
+function getChapterLabel(v) {
+  const labels = {
+    all: 'all chapters',
+    '7': 'Chapter 7',
+    '9': 'Chapter 9',
+    '11': 'Chapter 11',
+    '12': 'Chapter 12',
+    '13': 'Chapter 13',
+    '15': 'Chapter 15',
+    OTH: 'other chapters'
+  };
+  return labels[v] || v;
+}
+function getMetricLabel(v) {
+  const labels = {
+    cases: 'total amount',
+    per100pop: 'per 100 population',
+    per100hh: 'per 100 households',
+    per100labor: 'per 100 labor force',
+    per100unemp: 'per 100 unemployed',
+    per100pop16: 'per 100 population age 16+',
+    perIncomeBillion: 'cases per $1B aggregate household income',
+    share: 'share of all filings',
+    momAbs: 'month-to-month change',
+    momPct: 'month-to-month % change',
+    yoyAbs: 'year-over-year change',
+    yoyPct: 'year-over-year % change'
+  };
+  return labels[v] || v;
+}
+function buildLegendTitle() {
+  const year = document.getElementById('yearSelect').value;
+  const month = document.getElementById('monthSelect').value;
+  const debtorType = document.getElementById('debtorTypeSelect').value;
+  const chapter = document.getElementById('chapterSelect').value;
+  const metric = document.getElementById('metricSelect').value;
 
-  const values = getNumericValues(fieldName);
+  return `${year}-${month} ${getMetricLabel(metric)} for ${getDebtorTypeLabel(debtorType)} in ${getChapterLabel(chapter)}`;
+  // return `${year}-${month} for ${getDebtorTypeLabel(debtorType)} in ${getChapterLabel(chapter)}`;
+}
+
+function applyClassification() {
+  // updateSelectedCasesToFeatures();
+  updateSelectedValueToFeatures()
+
+  const classCount = Number(document.getElementById('classCount').value);
+  const paletteName = document.getElementById('paletteSelect').value;
+
+  const values = vectorSource.getFeatures()
+    .map(f => Number(f.get('__displayValue')))
+    .filter(v => Number.isFinite(v))
+    .sort((a, b) => a - b);
+
   // const breaks = buildBreaks(values, classCount); // equal-interval
   const breaks = buildQuantileBreaks(values, classCount);
   // const colors = getColorRamp(classCount);
-  const paletteName = document.getElementById('paletteSelect').value;
   const colors = getColorRamp(classCount, paletteName);
 
   const styleCache = new Map();
 
   vectorLayer.setStyle((feature) => {
-    const value = Number(feature.get(fieldName));
+    // const value = Number(feature.get(fieldName));
+    const value = Number(feature.get('__displayValue'));
     const classIndex = getClassIndex(value, breaks);
     const color = colors[classIndex] || colors[0];
     const key = `${classIndex}`;
@@ -404,7 +859,15 @@ function applyClassification() {
     return styleCache.get(key);
   });
 
-  updateLegend(fieldName, breaks, colors);
+  const legendTitle = buildLegendTitle();
+
+  updateLegend(
+    // `Cases (${year}-${month}) — ${debtorType} — ${chapter}`,
+    // `${year}-${month} ${debtorType} ${chapter}`,
+    legendTitle,
+    breaks,
+    colors
+  );
 }
 
 
@@ -417,17 +880,32 @@ function toggleAboutPanel() {
 
 //  show hover label
 function getHoverLabelHtml(feature) {
-  const fieldName = document.getElementById('fieldSelect').value;
+  // // const fieldName = document.getElementById('fieldSelect').value;
+  // const year = document.getElementById('yearSelect').value;
+  // const month = document.getElementById('monthSelect').value;
+  // const debtorType = document.getElementById('debtorTypeSelect').value;
+  // const chapter = document.getElementById('chapterSelect').value;
 
   const districtName =
     feature.get('Initial') || 'District';
 
-  const displayFieldName = getNameOfData(fieldName);
-  const value = feature.get(fieldName);
+  // const value = feature.get(fieldName);
+  const value = feature.get('__displayValue');
+
+  // const debtorLabel =
+  //   debtorType === 'all' ? 'All debtors' :
+  //   debtorType === 'business' ? 'Business' :
+  //   'Nonbusiness';
+
+  // const chapterLabel =
+  //   chapter === 'all' ? 'All chapters' :
+  //   chapter === 'OTH' ? 'Other chapters' :
+  //   `Chapter ${chapter}`;
 
   return `
     <div class="hover-title">${districtName}</div>
-    <div class="hover-value">${displayFieldName}: ${value ?? 'N/A'}</div>
+    <div class="hover-value">${buildLegendTitle()}</div>
+    <div class="hover-value">Cases: ${value ?? 'N/A'}</div>
   `;
 }
 
