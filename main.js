@@ -5,6 +5,8 @@ const massCenter = [139.77, 35.68];
 const CSV_URL = './data/output.csv';
 const GEOJSON_URL = './data/US_Court_pop_4326.geojson'
 
+let animationTimer = null;
+
 let csvRows = [];
 let monthlyLookup = {};
 let featureAliasMap = new ol.Map();
@@ -38,19 +40,19 @@ const aboutToggle = document.getElementById('aboutToggle');
 
 // add listeners
 // document.getElementById('fieldSelect').addEventListener('change', applyClassification);
-document.getElementById('classCount').addEventListener('change', applyClassification);
+document.getElementById('classCount').addEventListener('change', stopAnimationAndApply);
 //  add listener for new palette selector
-document.getElementById('paletteSelect').addEventListener('change', applyClassification);
+document.getElementById('paletteSelect').addEventListener('change', stopAnimationAndApply);
 
 document.getElementById('yearSelect').addEventListener('change', function () {
   rebuildMonthSelect();
-  applyClassification();
+  stopAnimationAndApply();
 });
 
-document.getElementById('monthSelect').addEventListener('change', applyClassification);
-document.getElementById('debtorTypeSelect').addEventListener('change', applyClassification);
-document.getElementById('chapterSelect').addEventListener('change', applyClassification);
-document.getElementById('metricSelect').addEventListener('change', applyClassification);
+document.getElementById('monthSelect').addEventListener('change', stopAnimationAndApply);
+document.getElementById('debtorTypeSelect').addEventListener('change', stopAnimationAndApply);
+document.getElementById('chapterSelect').addEventListener('change', stopAnimationAndApply);
+document.getElementById('metricSelect').addEventListener('change', stopAnimationAndApply);
 
 // csv parser
 function splitCsvLine(line) {
@@ -167,6 +169,125 @@ function buildMonthlyLookup(rows) {
   });
   yearMonthKeys.sort();
 }
+function initializeTimeSlider() {
+  const slider = document.getElementById('timeSlider');
+  const label = document.getElementById('timeLabel');
+
+  slider.min = 0;
+  slider.max = Math.max(0, yearMonthKeys.length - 1);
+  slider.value = 0;
+
+  if (yearMonthKeys.length > 0) {
+    label.textContent = yearMonthKeys[0];
+  }
+}
+// function to move to next month
+function stepMonthForward() {
+  const current = document.getElementById('yearSelect').value + '-' +
+                  document.getElementById('monthSelect').value;
+
+  const idx = yearMonthKeys.indexOf(current);
+  if (idx < 0) return;
+
+  const nextIndex = idx + 1;
+
+  if (nextIndex >= yearMonthKeys.length) {
+    stopAnimation();
+    return;
+  }
+
+  const next = yearMonthKeys[(idx + 1) % yearMonthKeys.length];
+  const parts = next.split('-');
+  const nextYear = parts[0];
+  const nextMonth = parts[1];
+
+  document.getElementById('yearSelect').value = nextYear;
+  rebuildMonthSelect();
+  document.getElementById('monthSelect').value = nextMonth;
+
+  applyClassification();
+}
+
+// add a stop function
+function stopAnimation() {
+  if (animationTimer) {
+    clearInterval(animationTimer);
+    animationTimer = null;
+  }
+
+  document.getElementById('playToggle').textContent = 'Play';
+}
+
+// add play/pause button logic
+document.getElementById('playToggle').addEventListener('click', function () {
+  if (animationTimer) {
+    stopAnimation();
+    return;
+  }
+
+  const current = document.getElementById('yearSelect').value + '-' +
+                  document.getElementById('monthSelect').value;
+  const idx = yearMonthKeys.indexOf(current);
+
+  if (idx === yearMonthKeys.length - 1 && yearMonthKeys.length > 0) {
+    const first = yearMonthKeys[0].split('-');
+    document.getElementById('yearSelect').value = first[0];
+    rebuildMonthSelect();
+    document.getElementById('monthSelect').value = first[1];
+    applyClassification();
+  }
+
+
+  this.textContent = 'Pause';
+
+  const speed = Number(document.getElementById('speedSelect').value) || 1000;
+
+  animationTimer = setInterval(function () {
+    stepMonthForward();
+  }, speed);
+  // }, 1000); // 1 second per month
+});
+
+// slider control map
+document.getElementById('timeSlider').addEventListener('input', function () {
+  stopAnimation();
+
+  const idx = Number(this.value);
+  const ym = yearMonthKeys[idx];
+  if (!ym) return;
+
+  const parts = ym.split('-');
+  const y = parts[0];
+  const m = parts[1];
+
+  document.getElementById('yearSelect').value = y;
+  rebuildMonthSelect();
+  document.getElementById('monthSelect').value = m;
+  document.getElementById('timeLabel').textContent = ym;
+
+  applyClassification();
+});
+
+// stop animation when user chagnes control manually
+function stopAnimationAndApply() {
+  stopAnimation();
+  applyClassification();
+}
+
+// add helper to sync slider from current year/month
+function syncSliderToCurrentMonth() {
+  const current = document.getElementById('yearSelect').value + '-' +
+                  document.getElementById('monthSelect').value;
+
+  const idx = yearMonthKeys.indexOf(current);
+  const slider = document.getElementById('timeSlider');
+  const label = document.getElementById('timeLabel');
+
+  if (idx >= 0) {
+    slider.value = idx;
+    label.textContent = current;
+  }
+}
 
 // populate year and month selectors
 function populateYearMonthControls() {
@@ -231,6 +352,7 @@ async function loadMonthlyCsv() {
   // test connection
   testMonthlyConnection();
   populateYearMonthControls();
+  initializeTimeSlider();
 }
 
 // add record summarizer
@@ -658,6 +780,7 @@ vectorSource.once('change', async function () {
     await loadMonthlyCsv();
 
     applyClassification();
+    syncSliderToCurrentMonth();
   }
 });
 
@@ -868,6 +991,8 @@ function applyClassification() {
     breaks,
     colors
   );
+
+  syncSliderToCurrentMonth();
 }
 
 

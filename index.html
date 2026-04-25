@@ -160,6 +160,16 @@
         #aboutPanel.collapsed #aboutContent {
             display: none;
         }
+        #timeSlider {
+            width: 180px;
+        }
+
+        #timeLabel {
+            font-size: 12px;
+            color: #444;
+            min-width: 60px;
+            display: inline-block;
+        }
 
         .hover-label {
             position: absolute;
@@ -431,6 +441,21 @@
 
         <div class="control-group">
             <button id="hoverToggle">Hover labels: On</button>
+        </div>
+        <div class="control-group">
+            <label for="speedSelect">Speed:</label>
+            <select id="speedSelect">
+                <option value="1500">Slow</option>
+                <option value="1000" selected>Normal</option>
+                <option value="500">Fast</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label for="timeSlider">Progress:</label>
+            <input type="range" id="timeSlider" min="0" max="0" value="0" step="1">
+        </div>
+        <div class="control-group">
+            <span id="timeLabel">--</span>
         </div>
     </div>
 
