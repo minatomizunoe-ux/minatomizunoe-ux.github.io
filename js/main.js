@@ -5,6 +5,7 @@ const massCenter = [139.77, 35.68];
 const CSV_URL = './data/output.csv';
 const GEOJSON_URL = './data/US_Court_pop_4326.geojson'
 
+
 let animationTimer = null;
 
 let csvRows = [];
@@ -27,6 +28,16 @@ const baseColors5 = [
   '#2171b5',
   '#08306b'
 ];
+
+// for chart
+
+let selectedFeature = null;
+let playbackHistory = [];
+let playbackStartIndex = null;
+
+const trendCanvas = document.getElementById('trendChart');
+const compositionCanvas = document.getElementById('compositionChart');
+const chartTitle = document.getElementById('chartTitle');
 
 // set hover show info
 let hoveredFeature = null;
@@ -53,6 +64,26 @@ document.getElementById('monthSelect').addEventListener('change', stopAnimationA
 document.getElementById('debtorTypeSelect').addEventListener('change', stopAnimationAndApply);
 document.getElementById('chapterSelect').addEventListener('change', stopAnimationAndApply);
 document.getElementById('metricSelect').addEventListener('change', stopAnimationAndApply);
+
+
+// change composition chart color
+function getCompositionColors() {
+  return {
+    B7:   '#3Bcfd4',
+    B11:  '#58cc9a',
+    B13:  '#84c95f',
+    BOTH: '#b9b737',
+
+    N7:   '#fc9305',
+    N11:  '#fa7a2a',
+    N13:  '#f44767',
+    NOTH: '#f20094',
+
+    A9:   '#7a7a7a',
+    A12:  '#9a9a9a',
+    A15:  '#b5b5b5'
+  };
+}
 
 // csv parser
 function splitCsvLine(line) {
@@ -104,6 +135,366 @@ function parseCsv(text) {
   return rows;
 }
 
+// add chart helper
+function clearCanvas(canvas) {
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+// calculate rank for month
+function getRankForMonth(targetFeature, ym) {
+  const values = vectorSource.getFeatures().map(feature => {
+    return {
+      feature: feature,
+      value: getMetricValueForMonth(feature, ym)
+    };
+  });
+
+  const valid = values.filter(d => Number.isFinite(d.value));
+  valid.sort((a, b) => b.value - a.value);
+
+  for (let i = 0; i < valid.length; i++) {
+    if (valid[i].feature === targetFeature) {
+      return i + 1;
+    }
+  }
+
+  return null;
+}
+
+// add helper to compute metric for any month
+function getMetricValueForMonth(feature, ym) {
+  const debtorType = document.getElementById('debtorTypeSelect').value;
+  const chapter = document.getElementById('chapterSelect').value;
+  const metric = document.getElementById('metricSelect').value;
+
+  const initial = feature.get('Initial');
+  const currentRows = monthlyLookup[initial] ? monthlyLookup[initial][ym] : null;
+  const currentCases = getCasesFromRows(currentRows, debtorType, chapter);
+
+  const population = Number(feature.get('Population')) || null;
+  const households = Number(feature.get('1101C11E_s')) || null;
+  const laborForce = Number(feature.get('LaborForce')) || null;
+  const unemployed = Number(feature.get('Unemployed')) || null;
+  const pop16over = Number(feature.get('2301C11E_s')) || null;
+  const aggIncome = Number(feature.get('B19025_1E_')) || null;
+
+  if (metric === 'cases') return currentCases;
+
+  if (metric === 'per100pop') {
+    if (!population || population === 0) return null;
+    return currentCases / population * 100;
+  }
+
+  if (metric === 'per100hh') {
+    if (!households || households === 0) return null;
+    return currentCases / households * 100;
+  }
+
+  if (metric === 'per100labor') {
+    if (!laborForce || laborForce === 0) return null;
+    return currentCases / laborForce * 100;
+  }
+
+  if (metric === 'per100unemp') {
+    if (!unemployed || unemployed === 0) return null;
+    return currentCases / unemployed * 100;
+  }
+
+  if (metric === 'per100pop16') {
+    if (!pop16over || pop16over === 0) return null;
+    return currentCases / pop16over * 100;
+  }
+
+  if (metric === 'perIncomeBillion') {
+    if (!aggIncome || aggIncome === 0) return null;
+    return currentCases / aggIncome * 1000000000;
+  }
+
+  if (metric === 'share') {
+    const totalAllCases = getCasesFromRows(currentRows, 'all', 'all');
+    if (!totalAllCases || totalAllCases === 0) return null;
+    return currentCases / totalAllCases;
+  }
+
+  const parts = ym.split('-');
+  const year = parts[0];
+  const month = parts[1];
+
+  const prevMonthObj = getPreviousMonth(year, month);
+  const prevYm = prevMonthObj.year + '-' + prevMonthObj.month;
+  const prevRows = monthlyLookup[initial] ? monthlyLookup[initial][prevYm] : null;
+  const prevCases = getCasesFromRows(prevRows, debtorType, chapter);
+
+  if (metric === 'momAbs') return currentCases - prevCases;
+  if (metric === 'momPct') {
+    if (!prevCases || prevCases === 0) return null;
+    return (currentCases - prevCases) / prevCases * 100;
+  }
+
+  const prevYearObj = getPreviousYearSameMonth(year, month);
+  const prevYearYm = prevYearObj.year + '-' + prevYearObj.month;
+  const prevYearRows = monthlyLookup[initial] ? monthlyLookup[initial][prevYearYm] : null;
+  const prevYearCases = getCasesFromRows(prevYearRows, debtorType, chapter);
+
+  if (metric === 'yoyAbs') return currentCases - prevYearCases;
+  if (metric === 'yoyPct') {
+    if (!prevYearCases || prevYearCases === 0) return null;
+    return (currentCases - prevYearCases) / prevYearCases * 100;
+  }
+
+  return currentCases;
+}
+
+// add composition calculation for current month
+function getCurrentComposition(feature) {
+  const year = document.getElementById('yearSelect').value;
+  const month = document.getElementById('monthSelect').value;
+  const ym = year + '-' + month;
+
+  const initial = feature.get('Initial');
+  const rows = monthlyLookup[initial] ? monthlyLookup[initial][ym] : null;
+
+  const parts = [
+    { key: 'B7',   label: 'B7',    value: getCasesFromRows(rows, 'business', '7') },
+    { key: 'B11',  label: 'B11',   value: getCasesFromRows(rows, 'business', '11') },
+    { key: 'B13',  label: 'B13',   value: getCasesFromRows(rows, 'business', '13') },
+    { key: 'BOTH', label: 'B Oth', value: getCasesFromRows(rows, 'business', 'OTH') },
+
+    { key: 'N7',   label: 'N7',    value: getCasesFromRows(rows, 'nonbusiness', '7') },
+    { key: 'N11',  label: 'N11',   value: getCasesFromRows(rows, 'nonbusiness', '11') },
+    { key: 'N13',  label: 'N13',   value: getCasesFromRows(rows, 'nonbusiness', '13') },
+    { key: 'NOTH', label: 'N Oth', value: getCasesFromRows(rows, 'nonbusiness', 'OTH') },
+
+    { key: 'A9',   label: 'A9',    value: getCasesFromRows(rows, 'all', '9') },
+    { key: 'A12',  label: 'A12',   value: getCasesFromRows(rows, 'all', '12') },
+    { key: 'A15',  label: 'A15',   value: getCasesFromRows(rows, 'all', '15') }
+  ];
+
+  // IMPORTANT: use only displayed parts as denominator
+  const displayedTotal = parts.reduce((sum, p) => sum + (Number(p.value) || 0), 0);
+
+  parts.forEach(p => {
+    p.share = displayedTotal > 0 ? p.value / displayedTotal : 0;
+  });
+
+  return {
+    total: displayedTotal,
+    parts: parts
+  };
+}
+
+// add trend chart drawing
+function drawTrendChart() {
+  clearCanvas(trendCanvas);
+  const ctx = trendCanvas.getContext('2d');
+
+  if (!selectedFeature) {
+    ctx.fillStyle = '#666';
+    ctx.font = '12px Arial';
+    ctx.fillText('No district selected', 10, 20);
+    return;
+  }
+
+  // Use full history instead of only playbackHistory
+  const fullSeries = yearMonthKeys.map(ym => {
+    return {
+      ym: ym,
+      value: getMetricValueForMonth(selectedFeature, ym),
+      rank: getRankForMonth(selectedFeature, ym)
+    };
+  });
+
+  const valid = fullSeries.filter(d => Number.isFinite(d.value));
+  if (!valid.length) {
+    ctx.fillStyle = '#666';
+    ctx.font = '12px Arial';
+    ctx.fillText('No valid values yet', 10, 20);
+    return;
+  }
+
+  const width = trendCanvas.width;
+  const height = trendCanvas.height;
+  const padL = 42;
+  const padR = 14;
+  const padT = 24;
+  const padB = 26;
+
+  const minVal = Math.min(...valid.map(d => d.value));
+  const maxVal = Math.max(...valid.map(d => d.value));
+  const range = (maxVal - minVal) || 1;
+
+  // axes
+  ctx.strokeStyle = '#b5b5b5';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padL, padT);
+  ctx.lineTo(padL, height - padB);
+  ctx.lineTo(width - padR, height - padB);
+  ctx.stroke();
+
+  // line
+  ctx.strokeStyle = '#2171b5';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+
+  valid.forEach((d, i) => {
+    const x = padL + (i / Math.max(valid.length - 1, 1)) * (width - padL - padR);
+    const y = height - padB - ((d.value - minVal) / range) * (height - padT - padB);
+
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+
+  ctx.stroke();
+
+  // highlight current month if present
+  const currentYm =
+    document.getElementById('yearSelect').value + '-' +
+    document.getElementById('monthSelect').value;
+
+  const currentIndex = valid.findIndex(d => d.ym === currentYm);
+  if (currentIndex >= 0) {
+    const d = valid[currentIndex];
+    const x = padL + (currentIndex / Math.max(valid.length - 1, 1)) * (width - padL - padR);
+    const y = height - padB - ((d.value - minVal) / range) * (height - padT - padB);
+
+    ctx.fillStyle = '#f20094';
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // labels
+  ctx.fillStyle = '#111';
+  ctx.font = '11px Arial';
+  ctx.fillText(minVal.toFixed(2), 2, height - padB);
+  ctx.fillText(maxVal.toFixed(2), 2, padT + 4);
+
+  const firstLabel = valid[0].ym;
+  const lastLabel = valid[valid.length - 1].ym;
+  ctx.fillText(firstLabel, padL, height - 6);
+  ctx.fillText(lastLabel, width - padR - 44, height - 6);
+
+  const currentRank = getRankForMonth(selectedFeature, currentYm);
+  if (currentRank != null) {
+    ctx.fillStyle = '#666';
+    ctx.font = '12px Arial';
+    ctx.fillText(`Rank: ${currentRank} / 93`, width - 95, 16);
+  }
+}
+
+// add composition chart drawing
+function getSelectedCompositionKey() {
+  const debtorType = document.getElementById('debtorTypeSelect').value;
+  const chapter = document.getElementById('chapterSelect').value;
+
+  if (debtorType === 'all' || chapter === 'all') return null;
+  if (debtorType === 'business') return 'B' + chapter;
+  if (debtorType === 'nonbusiness') return 'N' + chapter;
+  return null;
+}
+
+function drawCompositionChart() {
+  clearCanvas(compositionCanvas);
+  const ctx = compositionCanvas.getContext('2d');
+
+  if (!selectedFeature) {
+    ctx.fillStyle = '#666';
+    ctx.font = '12px Arial';
+    ctx.fillText('No district selected', 10, 20);
+    return;
+  }
+
+  const comp = getCurrentComposition(selectedFeature);
+  const parts = comp.parts;
+  const selectedKey = getSelectedCompositionKey();
+  const colorMap = getCompositionColors();
+
+  const width = compositionCanvas.width;
+
+  const barX = 10;
+  const barY = 34;
+  const barW = width - 20;
+
+  const normalH = 18;
+  const selectedH = 34;
+
+  let currentX = barX;
+
+  ctx.fillStyle = '#111';
+  ctx.font = '12px Arial';
+  ctx.fillText('Current-month composition', 10, 15);
+
+  parts.forEach(part => {
+    if (part.share <= 0) return;
+
+    const segW = Math.max(1, barW * part.share);
+    const baseColor = colorMap[part.key] || '#999';
+
+    const isSelected = part.key === selectedKey;
+    const segH = isSelected ? selectedH : normalH;
+    const segY = isSelected ? barY - (selectedH - normalH) : barY;
+
+    ctx.fillStyle = baseColor;
+    ctx.fillRect(currentX, segY, segW, segH);
+
+    ctx.strokeStyle = isSelected ? '#666' : '#d0d0d0';
+    ctx.lineWidth = isSelected ? 1.5 : 0.8;
+    ctx.strokeRect(currentX, segY, segW, segH);
+
+    currentX += segW;
+  });
+
+  // legend text below
+  let y = 82;
+  parts.forEach(part => {
+    if (part.share <= 0) return;
+
+    const baseColor = colorMap[part.key] || '#999';
+    const isSelected = part.key === selectedKey;
+
+    ctx.fillStyle = baseColor;
+    ctx.fillRect(10, y - 9, 10, 10);
+
+    ctx.strokeStyle = isSelected ? '#666' : '#d0d0d0';
+    ctx.lineWidth = isSelected ? 1.2 : 0.6;
+    ctx.strokeRect(10, y - 9, 10, 10);
+
+    ctx.fillStyle = '#111';
+    ctx.font = isSelected ? 'bold 12px Arial' : '12px Arial';
+    ctx.fillText(`${part.label}: ${(part.share * 100).toFixed(1)}%`, 26, y);
+
+    y += 14;
+  });
+}
+function resetPlaybackHistory() {
+  playbackHistory = [];
+  playbackStartIndex = yearMonthKeys.indexOf(
+    document.getElementById('yearSelect').value + '-' +
+    document.getElementById('monthSelect').value
+  );
+}
+
+function appendPlaybackPoint() {
+  if (!selectedFeature) return;
+
+  const ym = document.getElementById('yearSelect').value + '-' +
+             document.getElementById('monthSelect').value;
+
+  const value = getMetricValue(selectedFeature);
+  const rank = getRankForMonth(selectedFeature, ym);
+
+  playbackHistory.push({
+    ym: ym,
+    value: value,
+    rank: rank
+  });
+
+  drawTrendChart();
+}
+
+// patch click behavior
 
 // connect geojson
 function normalizeText(v) {
@@ -237,6 +628,10 @@ document.getElementById('playToggle').addEventListener('click', function () {
     applyClassification();
   }
 
+  // for chart?
+  resetPlaybackHistory();
+  appendPlaybackPoint();
+
 
   this.textContent = 'Pause';
 
@@ -244,6 +639,8 @@ document.getElementById('playToggle').addEventListener('click', function () {
 
   animationTimer = setInterval(function () {
     stepMonthForward();
+    appendPlaybackPoint();
+    drawCompositionChart();
   }, speed);
   // }, 1000); // 1 second per month
 });
@@ -993,6 +1390,7 @@ function applyClassification() {
   );
 
   syncSliderToCurrentMonth();
+  drawCompositionChart();
 }
 
 
@@ -1153,7 +1551,49 @@ map.on('pointermove', function (evt) {
   hoverLabel.style.borderColor = color;
 });
 
+// dedicated info-panel updater
+function updateInfoPanel(feature) {
+  if (!feature) {
+    info.textContent = 'Click a feature to get info';
+    return;
+  }
 
+  const props = feature.getProperties();
+  const currentYm =
+    document.getElementById('yearSelect').value + '-' +
+    document.getElementById('monthSelect').value;
+
+  const currentRank = getRankForMonth(feature, currentYm);
+  const currentValue = props.__displayValue;
+
+  info.textContent =
+    `District: ${feature.get('Initial') || 'N/A'}\n` +
+    `${buildLegendTitle()}: ${currentValue ?? 'N/A'}\n` +
+    `Rank: ${currentRank ?? 'N/A'} / 93\n` +
+    `Population: ${props.Population ?? 'N/A'}\n` +
+    `Households: ${props['1101C11E_s'] ?? 'N/A'}\n` +
+    `LaborForce: ${props.LaborForce ?? 'N/A'}\n` +
+    `Unemployed: ${props.Unemployed ?? 'N/A'}`;
+}
+
+// dedicated chart-panel updater
+function updateChartPanel(feature) {
+  if (!feature) {
+    chartTitle.innerHTML = '<strong>District charts</strong>';
+    clearCanvas(trendCanvas);
+    clearCanvas(compositionCanvas);
+    return;
+  }
+
+  chartTitle.innerHTML = `<strong>District charts — ${feature.get('Initial') || 'District'}</strong>`;
+
+  // reset the playback-recorded trend for this newly selected district
+  playbackHistory = [];
+  appendPlaybackPoint();
+
+  // draw current-month composition immediately
+  drawCompositionChart();
+}
 
 // get info
 const info = document.getElementById('info');
@@ -1165,15 +1605,34 @@ map.on('singleclick', function (evt) {
   });
 
   if (!feature) {
-    info.textContent = 'Click a feature';
+    selectedFeature = null;
+    updateInfoPanel(null);
+    updateChartPanel(null);
     return;
   }
 
-  const props = feature.getProperties();
-  const entries = Object.entries(props).filter(([key]) => key !== 'geometry');
-  const firstSeven = entries.slice(0, 7);
+  selectedFeature = feature;
+  updateInfoPanel(feature);
+  updateChartPanel(feature);
 
-  info.textContent = firstSeven
-    .map(([key, value]) => `${key}: ${value}`)
-    .join('\n');
+  // if (!feature) {
+  //   info.textContent = 'Click a feature to get info';
+  //   selectedFeature = null;
+  //   playbackHistory = [];
+  //   chartTitle.innerHTML = '<strong>District charts</strong>';
+  //   clearCanvas(trendCanvas);
+  //   clearCanvas(compositionCanvas);
+  //   return;
+  // }
+
+  // selectedFeature = feature;
+  // chartTitle.innerHTML = `<strong>District charts — ${feature.get('Initial') || 'District'}</strong>`;
+
+  // // const props = feature.getProperties();
+  // // const entries = Object.entries(props).filter(([key]) => key !== 'geometry');
+  // // const firstSeven = entries.slice(0, 7);
+
+  // info.textContent = firstSeven
+  //   .map(([key, value]) => `${key}: ${value}`)
+  //   .join('\n');
 });
